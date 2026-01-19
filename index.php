@@ -1,48 +1,76 @@
-<html>
-
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
-<title>Exemplo PHP</title>
+    <meta charset="UTF-8">
+    <title>Exemplo PHP</title>
 </head>
 <body>
 
 <?php
-ini_set("display_errors", 1);
-header('Content-Type: text/html; charset=iso-8859-1');
+// Exibir erros apenas em ambiente de desenvolvimento
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
+// Charset correto
+header('Content-Type: text/html; charset=UTF-8');
 
+echo 'Versão atual do PHP: ' . phpversion() . '<br>';
 
-echo 'Versao Atual do PHP: ' . phpversion() . '<br>';
-
+// Idealmente essas variáveis deveriam vir de variáveis de ambiente (.env)
 $servername = "54.234.153.24";
-$username = "root";
-$password = "Senha123";
-$database = "meubanco";
+$username   = "root";
+$password   = "Senha123";
+$database   = "meubanco";
 
-// Criar conexão
-
-
+// Criar conexão orientada a objetos
 $link = new mysqli($servername, $username, $password, $database);
 
-/* check connection */
-if (mysqli_connect_errno()) {
-    printf("Connect failed: %s\n", mysqli_connect_error());
-    exit();
+// Verificar conexão
+if ($link->connect_error) {
+    die('Falha na conexão com o banco de dados: ' . $link->connect_error);
 }
 
-$valor_rand1 =  rand(1, 999);
-$valor_rand2 = strtoupper(substr(bin2hex(random_bytes(4)), 1));
-$host_name = gethostname();
+// Garantir charset correto na conexão
+$link->set_charset('utf8mb4');
 
+// Gerar valores
+$valor_rand1 = random_int(1, 999);
+$valor_rand2 = strtoupper(bin2hex(random_bytes(4)));
+$host_name   = gethostname();
 
-$query = "INSERT INTO dados (AlunoID, Nome, Sobrenome, Endereco, Cidade, Host) VALUES ('$valor_rand1' , '$valor_rand2', '$valor_rand2', '$valor_rand2', '$valor_rand2','$host_name')";
+// Usar prepared statements (evita SQL Injection)
+$stmt = $link->prepare(
+    "INSERT INTO dados (AlunoID, Nome, Sobrenome, Endereco, Cidade, Host)
+     VALUES (?, ?, ?, ?, ?, ?)"
+);
 
+if (!$stmt) {
+    die('Erro ao preparar a query: ' . $link->error);
+}
 
-if ($link->query($query) === TRUE) {
-  echo "New record created successfully";
+// Bind dos parâmetros
+$stmt->bind_param(
+    "isssss",
+    $valor_rand1,
+    $valor_rand2,
+    $valor_rand2,
+    $valor_rand2,
+    $valor_rand2,
+    $host_name
+);
+
+// Executar
+if ($stmt->execute()) {
+    echo "Registro criado com sucesso!";
 } else {
-  echo "Error: " . $link->error;
+    echo "Erro ao inserir registro: " . $stmt->error;
 }
 
+// Fechar recursos
+$stmt->close();
+$link->close();
 ?>
+
 </body>
 </html>
